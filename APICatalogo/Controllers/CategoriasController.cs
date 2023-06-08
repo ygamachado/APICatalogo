@@ -1,57 +1,59 @@
-﻿using APICatalogo.Context;
-using APICatalogo.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using APICatalogo.Context;
+using APICatalogo.Models;
 
 namespace APICatalogo.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class CategoriasController : ControllerBase
     {
         private readonly AppDbContext _context;
+
         public CategoriasController(AppDbContext context)
         {
             _context = context;
         }
 
+        // GET: api/Categorias
         [HttpGet]
-        public ActionResult<IEnumerable<Categoria>> Get()
+        public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias()
         {
-            var categorias = _context.Categorias.ToList();
-            if (categorias is null)
+          if (_context.Categorias == null)
+          {
+              return NotFound();
+          }
+            return await _context.Categorias.ToListAsync();
+        }
+
+        // GET: api/Categorias/5
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Categoria>> GetCategoria(int id)
+        {
+          if (_context.Categorias == null)
+          {
+              return NotFound();
+          }
+            var categoria = await _context.Categorias.FindAsync(id);
+
+            if (categoria == null)
             {
                 return NotFound();
             }
-            return categorias;
-        }
 
-        [HttpGet("{id:int}", Name = "ObterCategoria")]
-        public ActionResult<Categoria> Get(int id)
-        {
-            var categoria = _context.Categorias.FirstOrDefault(p => p.CategoriaId == id);
-            if (categoria is null)
-            {
-                return NotFound("Categoria não encontrado...");
-            }
             return categoria;
         }
 
-        [HttpPost]
-        public ActionResult Post(Categoria categoria)
-        {
-            if (categoria is null)
-                return BadRequest();
-
-            _context.Categorias.Add(categoria);
-            _context.SaveChanges();
-
-            return new CreatedAtRouteResult("ObterCategoria",
-                new { id = categoria.CategoriaId }, categoria);
-        }
-
-        [HttpPut("{id:int}")]
-        public ActionResult Put(int id, Categoria categoria)
+        // PUT: api/Categorias/5
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
         {
             if (id != categoria.CategoriaId)
             {
@@ -59,25 +61,64 @@ namespace APICatalogo.Controllers
             }
 
             _context.Entry(categoria).State = EntityState.Modified;
-            _context.SaveChanges();
 
-            return Ok(categoria);
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!CategoriaExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
         }
 
-        [HttpDelete("{id:int}")]
-        public ActionResult Delete(int id)
+        // POST: api/Categorias
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPost]
+        public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
         {
-            var categoria = _context.Categorias.FirstOrDefault(p => p.CategoriaId == id);
-            //var produto = _context.Categorias.Find(id);
+          if (_context.Categorias == null)
+          {
+              return Problem("Entity set 'AppDbContext.Categorias'  is null.");
+          }
+            _context.Categorias.Add(categoria);
+            await _context.SaveChangesAsync();
 
-            if (categoria is null)
+            return CreatedAtAction("GetCategoria", new { id = categoria.CategoriaId }, categoria);
+        }
+
+        // DELETE: api/Categorias/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCategoria(int id)
+        {
+            if (_context.Categorias == null)
             {
-                return NotFound("Produto não localizado...");
+                return NotFound();
             }
-            _context.Categorias.Remove(categoria);
-            _context.SaveChanges();
+            var categoria = await _context.Categorias.FindAsync(id);
+            if (categoria == null)
+            {
+                return NotFound();
+            }
 
-            return Ok(categoria);
+            _context.Categorias.Remove(categoria);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        private bool CategoriaExists(int id)
+        {
+            return (_context.Categorias?.Any(e => e.CategoriaId == id)).GetValueOrDefault();
         }
     }
 }
